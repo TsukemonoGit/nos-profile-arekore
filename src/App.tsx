@@ -311,7 +311,11 @@ const App: Component = () => {
         )}
       </Container>
 
-      <ToastContainer class="p-3" position={"bottom-center"}>
+      <ToastContainer
+        class="p-3"
+        position={"bottom-center"}
+        class="position-fixed"
+      >
         <Toast
           onClose={() => setShow(false)}
           show={show()}
