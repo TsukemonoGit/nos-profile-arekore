@@ -140,6 +140,15 @@ const App: Component = () => {
   };
 
   const handlePublish = async () => {
+    if (editingKey() !== null) {
+      // 修正中の項目がある場合は注意文を表示して処理を中止
+      setMessage(
+        "修正中の項目があります。完了する前に修正を完了してください。"
+      );
+      setShow(true);
+      return;
+    }
+
     //console.log(JSON.stringify(content()));
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = await waitNostr(1000);
@@ -172,6 +181,15 @@ const App: Component = () => {
   };
 
   const handlePublishNsec = async () => {
+    if (editingKey() !== null) {
+      // 修正中の項目がある場合は注意文を表示して処理を中止
+      setMessage(
+        "修正中の項目があります。完了する前に修正を完了してください。"
+      );
+      setShow(true);
+      return;
+    }
+
     if (seckey() === "") {
       return;
     }
