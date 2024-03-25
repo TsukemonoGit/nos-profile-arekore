@@ -18,6 +18,7 @@ import {
   Col,
   InputGroup,
   FormControl,
+  Nav,
 } from "solid-bootstrap";
 import { getHexPubkey } from "./function";
 
@@ -169,9 +170,24 @@ const App: Component = () => {
   return (
     <>
       <Container fluid="md" class="my-5">
-        <p>
-          誰のプロフィール（kind:0）をどのリレーから取るかを決めてsubmitを押して
-        </p>
+        <Row class={styles.profileHeader}>
+          <Col>
+            <h2 class="fs-2">profileを修正するやつ</h2>
+          </Col>
+          <Col class={styles.githubCol}>
+            <a
+              href="https://github.com/TsukemonoGit/nos-profile-arekore"
+              target="_blank"
+              rel="noopener noreferrer"
+              class={styles.github}
+            >
+              Github
+            </a>
+          </Col>
+        </Row>
+
+        <hr />
+        <h3 class="fs-3">profileを取得する</h3>
         <Form>
           <InputGroup class="mb-3">
             <Button
@@ -311,11 +327,7 @@ const App: Component = () => {
         )}
       </Container>
 
-      <ToastContainer
-        class="p-3"
-        position={"bottom-center"}
-        class="position-fixed"
-      >
+      <ToastContainer class="p-3 position-fixed" position={"bottom-center"}>
         <Toast
           onClose={() => setShow(false)}
           show={show()}
