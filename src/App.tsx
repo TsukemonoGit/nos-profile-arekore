@@ -7,6 +7,8 @@ import {
   validateEvent,
   getEventHash,
   nip19,
+  getPublicKey,
+  finalizeEvent,
 } from "nostr-tools";
 import {
   Form,
@@ -20,10 +22,11 @@ import {
   FormControl,
   Nav,
 } from "solid-bootstrap";
-import { getHexPubkey } from "./function";
+import { getHexPubkey, getHexSeckey } from "./function";
 
 const App: Component = () => {
   const [pubkey, setPubkey] = createSignal("");
+  const [seckey, setSeckey] = createSignal("");
   const [relayURL, setRelayURL] = createSignal("");
   const [show, setShow] = createSignal(false);
   const [message, setMessage] = createSignal("");
@@ -123,6 +126,19 @@ const App: Component = () => {
     setEditingKey(null);
   };
 
+  const handleGetPub = async () => {
+    const { waitNostr } = await import("nip07-awaiter");
+    const nostr = await waitNostr(1000);
+    if (nostr === undefined) {
+      alert("Install NIP-07 browser extension");
+      return;
+    }
+    const pub = await nostr.getPublicKey();
+    if (pub) {
+      setPubkey(nip19.npubEncode(pub));
+    }
+  };
+
   const handlePublish = async () => {
     //console.log(JSON.stringify(content()));
     const { waitNostr } = await import("nip07-awaiter");
@@ -155,18 +171,36 @@ const App: Component = () => {
     setShow(true);
   };
 
-  const handleGetPub = async () => {
-    const { waitNostr } = await import("nip07-awaiter");
-    const nostr = await waitNostr(1000);
-    if (nostr === undefined) {
-      alert("Install NIP-07 browser extension");
+  const handlePublishNsec = async () => {
+    if (seckey() === "") {
       return;
     }
-    const pub = await nostr.getPublicKey();
-    if (pub) {
-      setPubkey(nip19.npubEncode(pub));
+    const secUint8: Uint8Array = getHexSeckey(seckey());
+
+    let newEvent: NostrEvent = {
+      content: JSON.stringify(content()),
+      kind: event()?.kind ?? 0,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: event()?.tags ?? [],
+      pubkey: getPublicKey(secUint8),
+      sig: "",
+      id: "",
+    };
+    const check = validateEvent(newEvent);
+    if (!check) {
+      setMessage("不正なイベントです");
+      return;
     }
+    newEvent.id = getEventHash(newEvent);
+    newEvent = finalizeEvent(newEvent, secUint8);
+    console.log(newEvent);
+    const result = await relay.publish(newEvent);
+    relay.close();
+    console.log(result);
+    setMessage("完了しました");
+    setShow(true);
   };
+
   return (
     <>
       <Container fluid="md" class="my-5">
@@ -185,7 +219,6 @@ const App: Component = () => {
             </a>
           </Col>
         </Row>
-
         <hr />
         <h3 class="fs-3">profileを取得する</h3>
         <Form>
@@ -323,6 +356,18 @@ const App: Component = () => {
               Publish
             </Button>
             (NIP-07,46)
+            <hr />
+            <InputGroup class={"mb-3 " + styles.lowOpacity}>
+              <FormControl
+                type="text"
+                placeholder="nsec..."
+                value={seckey()}
+                onInput={(e) => setSeckey(e.currentTarget.value)}
+              />
+              <Button variant="outline-secondary" onClick={handlePublishNsec}>
+                Nsecで書き込む
+              </Button>
+            </InputGroup>
           </>
         )}
       </Container>

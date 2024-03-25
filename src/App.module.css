@@ -46,3 +46,7 @@
 .githubCol {
   text-align: right;
 }
+.lowOpacity {
+  opacity: 0.5;
+  margin-top: 10rem;
+}
