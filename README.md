@@ -1,3 +1,7 @@
+# nos-profile-arekore
+
+nostr の profile（kind:0）の content の中身を修正するツール
+
 ## Usage
 
 Those templates dependencies are maintained via [pnpm](https://pnpm.io) via `pnpm up -Lri`.
