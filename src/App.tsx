@@ -36,6 +36,8 @@ const App: Component = () => {
   const [editingKey, setEditingKey] = createSignal<string | boolean | null>(
     null
   );
+  const [newEvent, setNewEvent] = createSignal<NostrEvent | null>(null);
+
   let relay: Relay;
 
   // setEvent({
@@ -232,6 +234,7 @@ const App: Component = () => {
     newEvent = await nostr?.signEvent(newEvent);
     console.log(newEvent);
     const result = await relay.publish(newEvent);
+    setNewEvent(newEvent);
     relay.close();
     console.log(result);
     setMessage("完了しました");
@@ -292,6 +295,7 @@ const App: Component = () => {
     newEvent = finalizeEvent(newEvent, secUint8);
     console.log(newEvent);
     const result = await relay.publish(newEvent);
+    setNewEvent(newEvent);
     relay.close();
     console.log(result);
     setMessage("完了しました");
@@ -463,6 +467,14 @@ const App: Component = () => {
                 Nsecで書き込む
               </Button>
             </InputGroup>
+          </>
+        )}
+
+        {newEvent() !== null && (
+          <>
+            <hr />
+            <h3 class="fs-3">PublishedEvent</h3>
+            <pre>{JSON.stringify(newEvent(), null, 2)}</pre>
           </>
         )}
       </Container>
