@@ -403,16 +403,13 @@ const App: Component = () => {
                 </Button>
               </div>
             </Form>
-            <h3 class="fs-3">確定</h3>
             <hr />
-            <Button
-              variant="warning"
-              onClick={() => handleCreateEvent()}
-              class="mx-2"
-            >
-              署名
+            <h3 class="fs-3">newEvent作成</h3>
+            <Button variant="warning" onClick={() => handleCreateEvent()}>
+              NIP-07,46で署名
             </Button>
-            (NIP-07,46)
+
+            <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
             <hr />
             <InputGroup class={"mb-3 " + styles.lowOpacity}>
               <FormControl
@@ -438,11 +435,7 @@ const App: Component = () => {
             <pre>{JSON.stringify(newEvent(), null, 2)}</pre>
             <hr />
             <h3 class="fs-3">Relayに投稿</h3>
-            <Button
-              variant="warning"
-              onClick={() => handlePublieshEvent()}
-              class="mx-2"
-            >
+            <Button variant="warning" onClick={() => handlePublieshEvent()}>
               投稿
             </Button>
           </>
