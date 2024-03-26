@@ -20,7 +20,6 @@ import {
   Col,
   InputGroup,
   FormControl,
-  Nav,
 } from "solid-bootstrap";
 import { getHexPubkey, getHexSeckey } from "./function";
 
@@ -31,7 +30,7 @@ const App: Component = () => {
   const [show, setShow] = createSignal(false);
   const [message, setMessage] = createSignal("");
   const [event, setEvent] = createSignal<NostrEvent | null>(null);
-  const [content, setContent] = createSignal<{ [key: string]: any }>({});
+  const [content, setContent] = createSignal<Metadata>({});
   const [newKey, setNewKey] = createSignal("");
   const [newValue, setNewValue] = createSignal<string | boolean>("");
   const [editingKey, setEditingKey] = createSignal<string | boolean | null>(
@@ -39,19 +38,54 @@ const App: Component = () => {
   );
   let relay: Relay;
 
-  // setEvent({
-  //   content:
-  //     '{"picture":"https://i.nostr.build/zxG0.png","banner":"https://image.nostr.build/5a7827dcd2524b81b0d20851cb63899694981a794d60c4716add12ae0ea7f9ad.gif","name":"mono","display_name":"mönö₍ 掃x除 ₎もの","about":"アイコンはあわゆきさん作\\n(ひとりごと)\\n2023/02/04(土)17時位 に はじめました \\n\\nnew!【いろんなリスト見るやつ】\\nhttps://nostviewstr.vercel.app/\\n\\n【ぶくまびうあ】\\nhttps://nostr-bookmark-viewer3.vercel.app/\\n【ノートを単品で複製したいときのやつ】\\nhttps://dupstr.vercel.app/\\n\\n【もの画像】\\nhttps://tsukemonogit.github.io/nostr-monoGazo-bot/\\n\\n【初めてクエストを達成した者】https://nostx.shino3.net/note18kn29rrwehlp9dgpqlrem3ysk5tt6ucl2h2tj4e4uh53facc6g2qxwa77h","nip05":"mono@tsukemonogit.github.io","lud16":"thatthumb37@walletofsatoshi.com","displayName":"","nip05valid":true}',
-  //   created_at: 1710262316,
-  //   id: "e000a0059b4ba1ad1f0010b86df51f676037afd957a5185ca410428d26bc6848",
-  //   kind: 0,
-  //   pubkey: "84b0c46ab699ac35eb2ca286470b85e081db2087cdef63932236c397417782f5",
-  //   sig: "ab61e66c7e2c33268d051a64549cb3879e3f7c71e4012b4180e8e374afa3dc23116a65e06401bcb350c4c45b0326006cc83433ff51fdaf18676b8177d1337a95",
-  //   tags: [],
-  // });
-  // setContent(JSON.parse((event() as NostrEvent).content));
+  setEvent({
+    content:
+      '{"picture":"https://i.nostr.build/zxG0.png","banner":"https://image.nostr.build/5a7827dcd2524b81b0d20851cb63899694981a794d60c4716add12ae0ea7f9ad.gif","name":"mono","display_name":"mönö₍ 掃x除 ₎もの","about":"アイコンはあわゆきさん作\\n(ひとりごと)\\n2023/02/04(土)17時位 に はじめました \\n\\nnew!【いろんなリスト見るやつ】\\nhttps://nostviewstr.vercel.app/\\n\\n【ぶくまびうあ】\\nhttps://nostr-bookmark-viewer3.vercel.app/\\n【ノートを単品で複製したいときのやつ】\\nhttps://dupstr.vercel.app/\\n\\n【もの画像】\\nhttps://tsukemonogit.github.io/nostr-monoGazo-bot/\\n\\n【初めてクエストを達成した者】https://nostx.shino3.net/note18kn29rrwehlp9dgpqlrem3ysk5tt6ucl2h2tj4e4uh53facc6g2qxwa77h","nip05":"mono@tsukemonogit.github.io","lud16":"thatthumb37@walletofsatoshi.com","displayName":"","nip05valid":true}',
+    created_at: 1710262316,
+    id: "e000a0059b4ba1ad1f0010b86df51f676037afd957a5185ca410428d26bc6848",
+    kind: 0,
+    pubkey: "84b0c46ab699ac35eb2ca286470b85e081db2087cdef63932236c397417782f5",
+    sig: "ab61e66c7e2c33268d051a64549cb3879e3f7c71e4012b4180e8e374afa3dc23116a65e06401bcb350c4c45b0326006cc83433ff51fdaf18676b8177d1337a95",
+    tags: [],
+  });
+  setContent(JSON.parse((event() as NostrEvent).content));
 
+  interface Metadata {
+    [key: string]: any;
+    name?: string;
+    about?: string;
+    picture?: string;
+    nip05?: string;
+    display_name?: string;
+    website?: string;
+    banner?: string;
+    bot?: boolean;
+    lud16?: string;
+  }
+  const sampleData: Metadata = {
+    name: "",
+    about: "",
+    picture: "",
+    nip05: "",
+    display_name: "",
+    website: "",
+    banner: "",
+    bot: false,
+    lud16: "",
+  };
+  let pubhex: string;
+  const dataReset = () => {
+    setSeckey("");
+    setShow(false);
+    setMessage("");
+    setEvent(null);
+    setContent({});
+    setNewKey("");
+    setNewValue("");
+    setEditingKey(null);
+  };
   const connectRelay = async () => {
+    dataReset();
     if (relayURL() == "" || pubkey() == "") {
       setMessage("check input pubkey or relayURL");
       setShow(true);
@@ -62,7 +96,7 @@ const App: Component = () => {
       //relayに接続
       relay = await Relay.connect(relayURL());
       console.log(`connected to ${relay.url}`);
-      const pubhex = getHexPubkey(pubkey());
+      pubhex = getHexPubkey(pubkey());
       // relay.subscribeをPromiseでラップして実行
       await new Promise<void>((resolve, reject) => {
         const sub = relay.subscribe(
@@ -104,6 +138,7 @@ const App: Component = () => {
   });
 
   const handleAdd = () => {
+    console.log("test");
     if (newKey() && newValue()) {
       const updatedContent = { ...content(), [newKey()]: newValue() };
       setContent(updatedContent);
@@ -122,7 +157,7 @@ const App: Component = () => {
     setEditingKey(key);
   };
 
-  const handleSave = (key: string) => {
+  const handleSave = () => {
     setEditingKey(null);
   };
 
@@ -149,6 +184,22 @@ const App: Component = () => {
       return;
     }
 
+    // contentの型チェックを行う
+    const contentData: Metadata = content();
+
+    // 各プロパティに対して型チェックを行う
+    for (const key in contentData) {
+      if (Object.prototype.hasOwnProperty.call(contentData, key)) {
+        const value = contentData[key];
+        // keyが存在するか、型が一致するかを確認
+        if (key in sampleData && typeof value !== typeof sampleData[key]) {
+          setMessage(`不正なデータが含まれています: ${key}`);
+          setShow(true);
+          return;
+        }
+      }
+    }
+
     //console.log(JSON.stringify(content()));
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = await waitNostr(1000);
@@ -167,7 +218,7 @@ const App: Component = () => {
       sig: "",
       id: "",
     };
-    if (newEvent.pubkey !== pubkey()) {
+    if (newEvent.pubkey !== pubhex) {
       setMessage("check your pubkey");
       setShow(true);
       return;
@@ -197,6 +248,22 @@ const App: Component = () => {
       return;
     }
 
+    // contentの型チェックを行う
+    const contentData: Metadata = content();
+
+    // 各プロパティに対して型チェックを行う
+    for (const key in contentData) {
+      if (Object.prototype.hasOwnProperty.call(contentData, key)) {
+        const value = contentData[key];
+        // keyが存在するか、型が一致するかを確認
+        if (key in sampleData && typeof value !== sampleData[key]) {
+          setMessage(`不正なデータが含まれています: ${key}`);
+          setShow(true);
+          return;
+        }
+      }
+    }
+
     if (seckey() === "") {
       return;
     }
@@ -211,7 +278,7 @@ const App: Component = () => {
       sig: "",
       id: "",
     };
-    if (newEvent.pubkey !== pubkey()) {
+    if (newEvent.pubkey !== pubhex) {
       setMessage("check your pubkey");
       setShow(true);
       return;
@@ -305,6 +372,7 @@ const App: Component = () => {
                     <Col>
                       <InputGroup>
                         <FormControl
+                          as="textarea"
                           placeholder={key}
                           type="text"
                           value={content()[key]}
@@ -341,7 +409,7 @@ const App: Component = () => {
                         {editingKey() === key && (
                           <Button
                             variant="outline-primary"
-                            onClick={() => handleSave(key)}
+                            onClick={() => handleSave()}
                           >
                             Save
                           </Button>
@@ -382,7 +450,7 @@ const App: Component = () => {
             </Form>
             <h3 class="fs-3">Relayに投げる</h3>
             <hr />
-            <Button variant="warning" onClick={handlePublish}>
+            <Button variant="warning" onClick={handlePublish} class="mx-2">
               Publish
             </Button>
             (NIP-07,46)
