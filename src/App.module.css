@@ -45,8 +45,12 @@
 
 .githubCol {
   text-align: right;
+  width: fit-content;
 }
 .lowOpacity {
   opacity: 0.5;
   margin-top: 10rem;
+}
+.title {
+  margin-bottom: 0;
 }

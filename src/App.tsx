@@ -301,21 +301,18 @@ const App: Component = () => {
   return (
     <>
       <Container fluid="md" class="my-5">
-        <Row class={styles.profileHeader}>
-          <Col>
-            <h2 class="fs-2">profileを修正するやつ</h2>
-          </Col>
-          <Col class={styles.githubCol}>
-            <a
-              href="https://github.com/TsukemonoGit/nos-profile-arekore"
-              target="_blank"
-              rel="noopener noreferrer"
-              class={styles.github}
-            >
-              Github
-            </a>
-          </Col>
-        </Row>
+        <div class={styles.profileHeader}>
+          <h2 class={"fs-2 " + styles.title}>profileを修正するやつ</h2>
+          <a
+            href="https://github.com/TsukemonoGit/nos-profile-arekore"
+            target="_blank"
+            rel="noopener noreferrer"
+            class={styles.githubCol}
+          >
+            Github
+          </a>
+        </div>
+
         <hr />
         <h3 class="fs-3">profileを取得する</h3>
         <Form>
