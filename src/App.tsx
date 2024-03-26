@@ -256,7 +256,7 @@ const App: Component = () => {
       if (Object.prototype.hasOwnProperty.call(contentData, key)) {
         const value = contentData[key];
         // keyが存在するか、型が一致するかを確認
-        if (key in sampleData && typeof value !== sampleData[key]) {
+        if (key in sampleData && typeof value !== typeof sampleData[key]) {
           setMessage(`不正なデータが含まれています: ${key}`);
           setShow(true);
           return;
