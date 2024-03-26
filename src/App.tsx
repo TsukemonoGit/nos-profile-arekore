@@ -153,7 +153,9 @@ const App: Component = () => {
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = await waitNostr(1000);
     if (nostr === undefined) {
-      alert("Install NIP-07 browser extension");
+      setMessage("Install NIP-07 browser extension");
+      setShow(true);
+
       return;
     }
     let newEvent: NostrEvent = {
@@ -165,6 +167,11 @@ const App: Component = () => {
       sig: "",
       id: "",
     };
+    if (newEvent.pubkey !== pubkey()) {
+      setMessage("check your pubkey");
+      setShow(true);
+      return;
+    }
     const check = validateEvent(newEvent);
     if (!check) {
       setMessage("不正なイベントです");
@@ -204,6 +211,11 @@ const App: Component = () => {
       sig: "",
       id: "",
     };
+    if (newEvent.pubkey !== pubkey()) {
+      setMessage("check your pubkey");
+      setShow(true);
+      return;
+    }
     const check = validateEvent(newEvent);
     if (!check) {
       setMessage("不正なイベントです");
