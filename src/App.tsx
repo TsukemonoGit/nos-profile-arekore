@@ -296,7 +296,8 @@ const App: Component = () => {
     }
     setProcessing(true);
     try {
-      if (!relay || !relay.connected) relay = await Relay.connect(relayURL());
+      if (!relay || relay.url !== relayURL() || !relay.connected)
+        relay = await Relay.connect(relayURL());
       console.log(`connected to ${relay.url}`);
 
       const result = await relay.publish(newEvent() as NostrEvent);
