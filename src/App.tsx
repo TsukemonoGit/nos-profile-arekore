@@ -20,6 +20,8 @@ import {
   Col,
   InputGroup,
   FormControl,
+  Accordion,
+  Spinner,
 } from "solid-bootstrap";
 import { getHexPubkey, getHexSeckey } from "./function";
 
@@ -37,7 +39,9 @@ const App: Component = () => {
     null
   );
   const [newEvent, setNewEvent] = createSignal<NostrEvent | null>(null);
-
+  const [editedContent, setEditedContent] = createSignal<Metadata | null>(null);
+  // 処理中状態の管理
+  const [processing, setProcessing] = createSignal(false);
   let relay: Relay;
 
   interface Metadata {
@@ -52,18 +56,20 @@ const App: Component = () => {
     bot?: boolean;
     lud16?: string;
   }
+  //一般的なmetadataに含まれる項目
   const sampleData: Metadata = {
-    name: "",
-    about: "",
-    picture: "",
-    nip05: "",
-    display_name: "",
-    website: "",
-    banner: "",
+    name: "name",
+    about: "about",
+    picture: "https://example.com/picture.webp",
+    nip05: "name@exapmle.com",
+    display_name: "name",
+    website: "https://example.com",
+    banner: "https://example.com/banner.webp",
     bot: false,
-    lud16: "",
+    lud16: "nameswallet@wallet.com",
   };
   let pubhex: string;
+  let scrollRef: HTMLDivElement;
   const dataReset = () => {
     setSeckey("");
     setShow(false);
@@ -73,6 +79,8 @@ const App: Component = () => {
     setNewKey("");
     setNewValue("");
     setEditingKey(null);
+    setEditedContent(null);
+    setNewEvent(null);
   };
   const connectRelay = async () => {
     dataReset();
@@ -83,10 +91,12 @@ const App: Component = () => {
     }
 
     try {
+      setProcessing(true);
+      pubhex = getHexPubkey(pubkey());
       //relayに接続
       relay = await Relay.connect(relayURL());
       console.log(`connected to ${relay.url}`);
-      pubhex = getHexPubkey(pubkey());
+
       // relay.subscribeをPromiseでラップして実行
       await new Promise<void>((resolve, reject) => {
         const sub = relay.subscribe(
@@ -120,6 +130,7 @@ const App: Component = () => {
       setMessage("取得できませんでした");
       setShow(true);
     }
+    setProcessing(false);
   };
 
   // コンテンツの変更を検知して表示を更新
@@ -128,30 +139,59 @@ const App: Component = () => {
   });
 
   const handleAdd = () => {
-    console.log("test");
+    setProcessing(true);
     if (newKey() && newValue()) {
       const updatedContent = { ...content(), [newKey()]: newValue() };
       setContent(updatedContent);
       setNewKey("");
       setNewValue("");
+      console.log("Content added:", content());
     }
+    setProcessing(false);
   };
 
   const handleDelete = (key: string) => {
+    setProcessing(true);
     const updatedContent = { ...content() };
     delete updatedContent[key];
     setContent(updatedContent);
+    setProcessing(false);
   };
 
   const handleEdit = (key: string | boolean) => {
     setEditingKey(key);
   };
-
-  const handleSave = () => {
+  const handleCancelEdit = () => {
     setEditingKey(null);
+    setEditedContent(null);
+  };
+
+  const handleSave = (key: string) => {
+    console.log(key);
+    if (
+      key in sampleData &&
+      editedContent() !== null &&
+      typeof (editedContent() as Metadata)[key] !== typeof sampleData[key]
+    ) {
+      setMessage(`無効なデータです: ${key}のタイプは${typeof sampleData[key]}`);
+      setShow(true);
+      return;
+    }
+    setProcessing(true);
+    const updatedContent = {
+      ...content(),
+      [key]:
+        editedContent() !== null
+          ? (editedContent() as Metadata)[key]
+          : content()[key],
+    };
+    setContent(updatedContent);
+    setEditingKey(null);
+    setProcessing(false);
   };
 
   const handleGetPub = async () => {
+    setProcessing(true);
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = await waitNostr(1000);
     if (nostr === undefined) {
@@ -162,6 +202,7 @@ const App: Component = () => {
     if (pub) {
       setPubkey(nip19.npubEncode(pub));
     }
+    setProcessing(false);
   };
 
   //dore="nsec"だとnsecによるかきこみ,nullだと拡張機能で
@@ -190,7 +231,7 @@ const App: Component = () => {
         }
       }
     }
-
+    setProcessing(true);
     //console.log(JSON.stringify(content()));
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = dore === "nsec" ? undefined : await waitNostr(1000);
@@ -200,233 +241,284 @@ const App: Component = () => {
 
       return;
     }
+    try {
+      let newEvent: NostrEvent = {
+        content: JSON.stringify(content()),
+        kind: event()?.kind ?? 0,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: event()?.tags ?? [],
+        pubkey:
+          dore === "nsec"
+            ? getPublicKey(getHexSeckey(seckey()))
+            : (await nostr?.getPublicKey()) ?? "",
+        sig: "",
+        id: "",
+      };
+      pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
+      console.log(pubhex);
+      //イベントチェック
+      if (pubhex !== "" && newEvent.pubkey !== pubhex) {
+        setMessage("check your pubkey");
+        setShow(true);
+        setProcessing(false);
+        return;
+      }
+      const check = validateEvent(newEvent);
+      if (!check) {
+        setMessage("不正なイベントです");
+        setProcessing(false);
+        return;
+      }
 
-    let newEvent: NostrEvent = {
-      content: JSON.stringify(content()),
-      kind: event()?.kind ?? 0,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: event()?.tags ?? [],
-      pubkey:
+      //
+      newEvent.id = getEventHash(newEvent);
+      newEvent =
         dore === "nsec"
-          ? getPublicKey(getHexSeckey(seckey()))
-          : (await nostr?.getPublicKey()) ?? "",
-      sig: "",
-      id: "",
-    };
-    pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
-    console.log(pubhex);
-    //イベントチェック
-    if (newEvent.pubkey !== pubhex) {
-      setMessage("check your pubkey");
-      setShow(true);
+          ? finalizeEvent(newEvent, getHexSeckey(seckey()))
+          : ((await nostr?.signEvent(newEvent)) as NostrEvent);
+      setNewEvent(newEvent);
+      if (scrollRef) {
+        scrollRef.scrollIntoView({ behavior: "smooth" });
+      }
+    } catch (error) {
+      setMessage("error");
+      setProcessing(false);
       return;
     }
-    const check = validateEvent(newEvent);
-    if (!check) {
-      setMessage("不正なイベントです");
-      return;
-    }
-
-    //
-    newEvent.id = getEventHash(newEvent);
-    newEvent =
-      dore === "nsec"
-        ? finalizeEvent(newEvent, getHexSeckey(seckey()))
-        : ((await nostr?.signEvent(newEvent)) as NostrEvent);
-    setNewEvent(newEvent);
+    setProcessing(false);
   };
 
   const handlePublieshEvent = async () => {
-    const result = await relay.publish(newEvent() as NostrEvent);
-    setMessage("完了しました");
-    setShow(true);
-    relay.close();
-    console.log(result);
+    if (relayURL() == "") {
+      setMessage("check input relayURL");
+      setShow(true);
+      return;
+    }
+    setProcessing(true);
+    try {
+      if (!relay || relay.url !== relayURL() || !relay.connected)
+        relay = await Relay.connect(relayURL());
+      console.log(`connected to ${relay.url}`);
+
+      const result = await relay.publish(newEvent() as NostrEvent);
+      setMessage("完了しました");
+      setShow(true);
+      relay.close();
+      console.log(result);
+    } catch (error) {
+      setMessage("error");
+      setShow(true);
+    }
+    setProcessing(false);
   };
 
   return (
     <>
       <Container fluid="md" class="mt-5">
-        <div class={styles.profileHeader}>
-          <h2 class={"fs-2 " + styles.title}>profileを修正するやつ</h2>
-          <a
-            href="https://github.com/TsukemonoGit/nos-profile-arekore"
-            target="_blank"
-            rel="noopener noreferrer"
-            class={styles.githubCol}
-          >
-            Github
-          </a>
-        </div>
-
-        <hr />
-        <h3 class="fs-3">profileを取得する</h3>
-        <Form>
-          <InputGroup class="mb-3">
-            <Button
-              variant="outline-secondary"
-              id="button-addon1"
-              onClick={handleGetPub}
+        <>
+          <div class={styles.profileHeader}>
+            <h3 class="fs-3">profileを修正 / 作成する</h3>{" "}
+            <a
+              href="https://github.com/TsukemonoGit/nos-profile-arekore"
+              target="_blank"
+              rel="noopener noreferrer"
+              class={styles.githubCol}
             >
-              NIP-07,46 <br />
-              から取得
-            </Button>
-            <FormControl
-              aria-label="Example text with button addon"
-              aria-describedby="basic-addon1"
-              type="text"
-              placeholder="npub..."
-              value={pubkey()}
-              onInput={(e) => setPubkey(e.currentTarget.value)}
-            />
-          </InputGroup>
+              Github
+            </a>
+          </div>
+          <hr />
+          <Accordion class="my-4">
+            <Accordion.Item eventKey="0">
+              <Accordion.Header>profileを読み込む</Accordion.Header>
+              <Accordion.Body>
+                <Form>
+                  <InputGroup class="mb-3">
+                    <Button
+                      variant="outline-secondary"
+                      id="button-addon1"
+                      onClick={handleGetPub}
+                    >
+                      NIP-07,46 <br />
+                      から取得
+                    </Button>
+                    <FormControl
+                      aria-label="Example text with button addon"
+                      aria-describedby="basic-addon1"
+                      type="text"
+                      placeholder="npub..."
+                      value={pubkey()}
+                      onInput={(e) => setPubkey(e.currentTarget.value)}
+                    />
+                  </InputGroup>
 
-          <Form.Group class="mb-3" controlId="relayURL">
-            <Form.Label>relayURL</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="wss://"
-              value={relayURL()}
-              onInput={(e) => setRelayURL(e.currentTarget.value)}
-            />
-          </Form.Group>
+                  <Form.Group class="mb-3" controlId="relayURL">
+                    <Form.Label>relayURL</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="wss://"
+                      value={relayURL()}
+                      onInput={(e) => setRelayURL(e.currentTarget.value)}
+                    />
+                  </Form.Group>
 
-          <Button variant="primary" type="button" onClick={connectRelay}>
-            Submit
-          </Button>
-        </Form>
-        <hr />
-        {event() !== null && (
-          <>
-            <h3 class="fs-3">Event</h3>
-            <pre>{JSON.stringify(event(), null, 2)}</pre>
-          </>
-        )}
-        {Object.keys(content()).length > 0 && (
-          <>
-            <h3 class="fs-3">profileを修正する</h3>
-            <Form>
-              {Object.keys(content()).map((key) => (
-                <div class={styles.content}>
-                  <Row>
-                    <Form.Label column lg={2}>
-                      {key}
-                    </Form.Label>
-                    <Col>
-                      <InputGroup>
-                        <FormControl
-                          as="textarea"
-                          placeholder={key}
-                          type="text"
-                          value={content()[key]}
-                          readOnly={editingKey() !== key}
-                          onChange={(e) => {
-                            const updatedContent = {
-                              ...content(),
-                              [key]:
-                                e.target.value === "true"
-                                  ? true
-                                  : e.target.value === "false"
-                                  ? false
-                                  : e.target.value,
-                            };
-                            setContent(updatedContent);
-                          }}
-                        />
-                        {editingKey() !== key && (
-                          <>
-                            <Button
-                              variant="outline-primary"
-                              onClick={() => handleEdit(key)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline-primary"
-                              onClick={() => handleDelete(key)}
-                            >
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                        {editingKey() === key && (
+                  <Button
+                    variant="primary"
+                    type="button"
+                    onClick={connectRelay}
+                  >
+                    取得
+                  </Button>
+                </Form>
+
+                {event() !== null && (
+                  <>
+                    <hr />
+                    <h3 class="fs-3">Event</h3>
+                    <pre>{JSON.stringify(event(), null, 2)}</pre>
+                  </>
+                )}
+              </Accordion.Body>
+            </Accordion.Item>
+          </Accordion>
+          <Form>
+            {Object.keys({ ...sampleData, ...content() }).map((key) => (
+              <div class={styles.content}>
+                <Row>
+                  <Form.Label column lg={2}>
+                    {key}
+                  </Form.Label>
+                  <Col>
+                    <InputGroup>
+                      <FormControl
+                        as="textarea"
+                        placeholder={key in sampleData ? sampleData[key] : key}
+                        type="text"
+                        value={
+                          (editingKey() === key
+                            ? editedContent()?.[key]
+                            : content()[key]) || ""
+                        }
+                        readOnly={editingKey() !== key}
+                        onChange={(e) => {
+                          const updatedContent = {
+                            ...editedContent(),
+                            [key]:
+                              e.target.value === "true"
+                                ? true
+                                : e.target.value === "false"
+                                ? false
+                                : e.target.value,
+                          };
+                          setEditedContent(updatedContent);
+                        }}
+                      />
+                      {editingKey() !== key && (
+                        <>
                           <Button
                             variant="outline-primary"
-                            onClick={() => handleSave()}
+                            onClick={() => handleEdit(key)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline-primary"
+                            onClick={() => handleDelete(key)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                      {editingKey() === key && (
+                        <>
+                          <Button
+                            variant="outline-primary"
+                            onClick={() => handleSave(key)}
                           >
                             Save
                           </Button>
-                        )}
-                      </InputGroup>
-                    </Col>
-                  </Row>
-                </div>
-              ))}
-
-              <div>
-                <input
-                  type="text"
-                  value={newKey()}
-                  onInput={(e) => setNewKey(e.target.value)}
-                  placeholder="New Key"
-                />
-                <input
-                  type="text"
-                  value={newValue().toString()}
-                  onInput={(e) => {
-                    // 新しい値が文字列かブール値のいずれかであることを確認
-                    const value = e.target.value;
-                    setNewValue(
-                      value === "true"
-                        ? true
-                        : value === "false"
-                        ? false
-                        : value
-                    );
-                  }}
-                  placeholder="New Value"
-                />
-                <Button variant="outline-primary" onClick={handleAdd}>
-                  Add
-                </Button>
+                          <Button
+                            variant="outline-secondary"
+                            onClick={handleCancelEdit}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                    </InputGroup>
+                  </Col>
+                </Row>
               </div>
-            </Form>
-            <hr />
-            <h3 class="fs-3">newEvent作成</h3>
-            <Button variant="warning" onClick={() => handleCreateEvent()}>
-              NIP-07,46で署名
-            </Button>
-
-            <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
-            <hr />
-            <InputGroup class={"mb-3 " + styles.lowOpacity}>
-              <FormControl
+            ))}
+            <div>
+              <input
                 type="text"
-                placeholder="nsec..."
-                value={seckey()}
-                onInput={(e) => setSeckey(e.currentTarget.value)}
+                value={newKey()}
+                onInput={(e) => setNewKey(e.target.value)}
+                placeholder="New Key"
               />
-              <Button
-                variant="outline-secondary"
-                onClick={() => handleCreateEvent("nsec")}
-              >
-                Nsecで署名
+              <input
+                type="text"
+                value={newValue().toString()}
+                onInput={(e) => {
+                  // 新しい値が文字列かブール値のいずれかであることを確認
+                  const value = e.target.value;
+                  setNewValue(
+                    value === "true" ? true : value === "false" ? false : value
+                  );
+                }}
+                placeholder="New Value"
+              />
+              <Button variant="outline-primary" onClick={handleAdd}>
+                Add
               </Button>
-            </InputGroup>
-          </>
-        )}
+            </div>
+          </Form>
+          <hr />
+          <h3 class="fs-3">newEvent作成</h3>
+          <Button variant="warning" onClick={() => handleCreateEvent()}>
+            NIP-07,46で署名
+          </Button>
+          <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
+          <hr />
+          <InputGroup class={"mb-3 " + styles.lowOpacity}>
+            <FormControl
+              type="text"
+              placeholder="nsec..."
+              value={seckey()}
+              onInput={(e) => setSeckey(e.currentTarget.value)}
+            />
+            <Button
+              variant="outline-secondary"
+              onClick={() => handleCreateEvent("nsec")}
+            >
+              Nsecで署名
+            </Button>
+          </InputGroup>
+        </>
 
         {newEvent() !== null && (
-          <>
+          <div ref={(ref) => (scrollRef = ref)}>
             <hr />
-            <h3 class="fs-3">修正済Event</h3>
+            <h3 class="fs-3">Event</h3>
             <pre>{JSON.stringify(newEvent(), null, 2)}</pre>
             <hr />
             <h3 class="fs-3">Relayに投稿</h3>
-            <Button variant="warning" onClick={() => handlePublieshEvent()}>
-              投稿
-            </Button>
-          </>
+            <Form>
+              <Form.Group class="mb-3" controlId="relayURL">
+                <Form.Label>relayURL</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="wss://"
+                  value={relayURL()}
+                  onInput={(e) => setRelayURL(e.currentTarget.value)}
+                />
+              </Form.Group>
+              <Button variant="warning" onClick={() => handlePublieshEvent()}>
+                投稿
+              </Button>
+            </Form>
+          </div>
         )}
 
         {/* footer */}
@@ -481,6 +573,16 @@ const App: Component = () => {
           <Toast.Body>{message()}</Toast.Body>
         </Toast>
       </ToastContainer>
+      {processing() && (
+        <Spinner
+          animation="border"
+          role="status"
+          variant="primary"
+          class={styles.spinner}
+        >
+          <span class="visually-hidden">Loading...</span>
+        </Spinner>
+      )}
     </>
   );
 };
