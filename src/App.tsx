@@ -21,6 +21,7 @@ import {
   InputGroup,
   FormControl,
   Accordion,
+  Spinner,
 } from "solid-bootstrap";
 import { getHexPubkey, getHexSeckey } from "./function";
 
@@ -39,6 +40,8 @@ const App: Component = () => {
   );
   const [newEvent, setNewEvent] = createSignal<NostrEvent | null>(null);
   const [editedContent, setEditedContent] = createSignal<Metadata | null>(null);
+  // 処理中状態の管理
+  const [processing, setProcessing] = createSignal(false);
   let relay: Relay;
 
   interface Metadata {
@@ -66,6 +69,7 @@ const App: Component = () => {
     lud16: "nameswallet@wallet.com",
   };
   let pubhex: string;
+  let scrollRef: HTMLDivElement;
   const dataReset = () => {
     setSeckey("");
     setShow(false);
@@ -86,6 +90,7 @@ const App: Component = () => {
     }
 
     try {
+      setProcessing(true);
       pubhex = getHexPubkey(pubkey());
       //relayに接続
       relay = await Relay.connect(relayURL());
@@ -124,6 +129,7 @@ const App: Component = () => {
       setMessage("取得できませんでした");
       setShow(true);
     }
+    setProcessing(false);
   };
 
   // コンテンツの変更を検知して表示を更新
@@ -132,6 +138,7 @@ const App: Component = () => {
   });
 
   const handleAdd = () => {
+    setProcessing(true);
     if (newKey() && newValue()) {
       const updatedContent = { ...content(), [newKey()]: newValue() };
       setContent(updatedContent);
@@ -139,12 +146,15 @@ const App: Component = () => {
       setNewValue("");
       console.log("Content added:", content());
     }
+    setProcessing(false);
   };
 
   const handleDelete = (key: string) => {
+    setProcessing(true);
     const updatedContent = { ...content() };
     delete updatedContent[key];
     setContent(updatedContent);
+    setProcessing(false);
   };
 
   const handleEdit = (key: string | boolean) => {
@@ -166,6 +176,7 @@ const App: Component = () => {
       setShow(true);
       return;
     }
+    setProcessing(true);
     const updatedContent = {
       ...content(),
       [key]:
@@ -175,9 +186,11 @@ const App: Component = () => {
     };
     setContent(updatedContent);
     setEditingKey(null);
+    setProcessing(false);
   };
 
   const handleGetPub = async () => {
+    setProcessing(true);
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = await waitNostr(1000);
     if (nostr === undefined) {
@@ -188,6 +201,7 @@ const App: Component = () => {
     if (pub) {
       setPubkey(nip19.npubEncode(pub));
     }
+    setProcessing(false);
   };
 
   //dore="nsec"だとnsecによるかきこみ,nullだと拡張機能で
@@ -216,7 +230,7 @@ const App: Component = () => {
         }
       }
     }
-
+    setProcessing(true);
     //console.log(JSON.stringify(content()));
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = dore === "nsec" ? undefined : await waitNostr(1000);
@@ -226,48 +240,74 @@ const App: Component = () => {
 
       return;
     }
+    try {
+      let newEvent: NostrEvent = {
+        content: JSON.stringify(content()),
+        kind: event()?.kind ?? 0,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: event()?.tags ?? [],
+        pubkey:
+          dore === "nsec"
+            ? getPublicKey(getHexSeckey(seckey()))
+            : (await nostr?.getPublicKey()) ?? "",
+        sig: "",
+        id: "",
+      };
+      pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
+      console.log(pubhex);
+      //イベントチェック
+      if (pubhex !== "" && newEvent.pubkey !== pubhex) {
+        setMessage("check your pubkey");
+        setShow(true);
+        setProcessing(false);
+        return;
+      }
+      const check = validateEvent(newEvent);
+      if (!check) {
+        setMessage("不正なイベントです");
+        setProcessing(false);
+        return;
+      }
 
-    let newEvent: NostrEvent = {
-      content: JSON.stringify(content()),
-      kind: event()?.kind ?? 0,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: event()?.tags ?? [],
-      pubkey:
+      //
+      newEvent.id = getEventHash(newEvent);
+      newEvent =
         dore === "nsec"
-          ? getPublicKey(getHexSeckey(seckey()))
-          : (await nostr?.getPublicKey()) ?? "",
-      sig: "",
-      id: "",
-    };
-    pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
-    console.log(pubhex);
-    //イベントチェック
-    if (pubhex !== "" && newEvent.pubkey !== pubhex) {
-      setMessage("check your pubkey");
-      setShow(true);
+          ? finalizeEvent(newEvent, getHexSeckey(seckey()))
+          : ((await nostr?.signEvent(newEvent)) as NostrEvent);
+      setNewEvent(newEvent);
+      if (scrollRef) {
+        scrollRef.scrollIntoView({ behavior: "smooth" });
+      }
+    } catch (error) {
+      setMessage("error");
+      setProcessing(false);
       return;
     }
-    const check = validateEvent(newEvent);
-    if (!check) {
-      setMessage("不正なイベントです");
-      return;
-    }
-
-    //
-    newEvent.id = getEventHash(newEvent);
-    newEvent =
-      dore === "nsec"
-        ? finalizeEvent(newEvent, getHexSeckey(seckey()))
-        : ((await nostr?.signEvent(newEvent)) as NostrEvent);
-    setNewEvent(newEvent);
+    setProcessing(false);
   };
 
   const handlePublieshEvent = async () => {
-    const result = await relay.publish(newEvent() as NostrEvent);
-    setMessage("完了しました");
-    setShow(true);
-    relay.close();
-    console.log(result);
+    if (relayURL() == "") {
+      setMessage("check input relayURL");
+      setShow(true);
+      return;
+    }
+    setProcessing(true);
+    try {
+      if (!relay || !relay.connected) relay = await Relay.connect(relayURL());
+      console.log(`connected to ${relay.url}`);
+
+      const result = await relay.publish(newEvent() as NostrEvent);
+      setMessage("完了しました");
+      setShow(true);
+      relay.close();
+      console.log(result);
+    } catch (error) {
+      setMessage("error");
+      setShow(true);
+    }
+    setProcessing(false);
   };
 
   return (
@@ -456,16 +496,27 @@ const App: Component = () => {
         </>
 
         {newEvent() !== null && (
-          <>
+          <div ref={(ref) => (scrollRef = ref)}>
             <hr />
-            <h3 class="fs-3">修正済Event</h3>
+            <h3 class="fs-3">Event</h3>
             <pre>{JSON.stringify(newEvent(), null, 2)}</pre>
             <hr />
             <h3 class="fs-3">Relayに投稿</h3>
-            <Button variant="warning" onClick={() => handlePublieshEvent()}>
-              投稿
-            </Button>
-          </>
+            <Form>
+              <Form.Group class="mb-3" controlId="relayURL">
+                <Form.Label>relayURL</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="wss://"
+                  value={relayURL()}
+                  onInput={(e) => setRelayURL(e.currentTarget.value)}
+                />
+              </Form.Group>
+              <Button variant="warning" onClick={() => handlePublieshEvent()}>
+                投稿
+              </Button>
+            </Form>
+          </div>
         )}
 
         {/* footer */}
@@ -520,6 +571,16 @@ const App: Component = () => {
           <Toast.Body>{message()}</Toast.Body>
         </Toast>
       </ToastContainer>
+      {processing() && (
+        <Spinner
+          animation="border"
+          role="status"
+          variant="primary"
+          class={styles.spinner}
+        >
+          <span class="visually-hidden">Loading...</span>
+        </Spinner>
+      )}
     </>
   );
 };
