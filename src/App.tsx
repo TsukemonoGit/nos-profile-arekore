@@ -80,6 +80,7 @@ const App: Component = () => {
     setNewValue("");
     setEditingKey(null);
     setEditedContent(null);
+    setNewEvent(null);
   };
   const connectRelay = async () => {
     dataReset();
