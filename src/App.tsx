@@ -203,14 +203,22 @@ const App: Component = () => {
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = await waitNostr(1000);
     if (nostr === undefined) {
-      alert("Install NIP-07 browser extension");
+      setMessage("Install NIP-07 browser extension");
+      setShow(true);
       return;
     }
-    const pub = await nostr.getPublicKey();
-    if (pub) {
-      setPubkey(nip19.npubEncode(pub));
+    try {
+      const pub = await nostr.getPublicKey();
+      if (pub) {
+        setPubkey(nip19.npubEncode(pub));
+      }
+      setProcessing(false);
+    } catch (error) {
+      console.log(error);
+      setMessage("pubkeyの取得に失敗しました");
+      setShow(true);
+      setProcessing(false);
     }
-    setProcessing(false);
   };
 
   //dore="nsec"だとnsecによるかきこみ,nullだと拡張機能で
