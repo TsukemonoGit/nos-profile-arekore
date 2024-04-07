@@ -1,4 +1,12 @@
-import { createSignal, type Component, createEffect } from "solid-js";
+import {
+  createSignal,
+  type Component,
+  createEffect,
+  Index,
+  Switch,
+  Match,
+  Show,
+} from "solid-js";
 
 import styles from "./App.module.css";
 import {
@@ -370,86 +378,96 @@ const App: Component = () => {
                     取得
                   </Button>
                 </Form>
-
-                {event() !== null && (
+                <Show when={event() !== null}>
                   <>
                     <hr />
                     <h3 class="fs-3">Event</h3>
                     <pre>{JSON.stringify(event(), null, 2)}</pre>
                   </>
-                )}
+                </Show>
               </Accordion.Body>
             </Accordion.Item>
           </Accordion>
           <Form>
-            {Object.keys({ ...sampleData, ...content() }).map((key) => (
-              <div class={styles.content}>
-                <Row>
-                  <Form.Label column lg={2}>
-                    {key}
-                  </Form.Label>
-                  <Col>
-                    <InputGroup>
-                      <FormControl
-                        as="textarea"
-                        placeholder={key in sampleData ? sampleData[key] : key}
-                        type="text"
-                        value={
-                          (editingKey() === key
-                            ? editedContent()?.[key]
-                            : content()[key]) || ""
-                        }
-                        readOnly={editingKey() !== key}
-                        onChange={(e) => {
-                          const updatedContent = {
-                            ...editedContent(),
-                            [key]:
-                              e.target.value === "true"
-                                ? true
-                                : e.target.value === "false"
-                                ? false
-                                : e.target.value,
-                          };
-                          setEditedContent(updatedContent);
-                        }}
-                      />
-                      {editingKey() !== key && (
-                        <>
-                          <Button
-                            variant="outline-primary"
-                            onClick={() => handleEdit(key)}
+            <Index each={Object.keys({ ...sampleData, ...content() })}>
+              {
+                (key, i) => (
+                  // {Object.keys({ ...sampleData, ...content() }).map((key) => (
+                  <div class={styles.content}>
+                    <Row>
+                      <Form.Label column lg={2}>
+                        {key()}
+                      </Form.Label>
+                      <Col>
+                        <InputGroup>
+                          <FormControl
+                            as="textarea"
+                            placeholder={
+                              key() in sampleData ? sampleData[key()] : key()
+                            }
+                            type="text"
+                            value={
+                              (editingKey() === key()
+                                ? editedContent()?.[key()]
+                                : content()[key()]) || ""
+                            }
+                            readOnly={editingKey() !== key()}
+                            onChange={(e) => {
+                              const updatedContent = {
+                                ...editedContent(),
+                                [key()]:
+                                  e.target.value === "true"
+                                    ? true
+                                    : e.target.value === "false"
+                                    ? false
+                                    : e.target.value,
+                              };
+                              setEditedContent(updatedContent);
+                            }}
+                          />
+
+                          <Show
+                            when={editingKey() !== key()}
+                            fallback={
+                              <>
+                                <Button
+                                  variant="outline-primary"
+                                  onClick={() => handleSave(key())}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  variant="outline-secondary"
+                                  onClick={handleCancelEdit}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            }
                           >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline-primary"
-                            onClick={() => handleDelete(key)}
-                          >
-                            Delete
-                          </Button>
-                        </>
-                      )}
-                      {editingKey() === key && (
-                        <>
-                          <Button
-                            variant="outline-primary"
-                            onClick={() => handleSave(key)}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            variant="outline-secondary"
-                            onClick={handleCancelEdit}
-                          >
-                            Cancel
-                          </Button>
-                        </>
-                      )}
-                    </InputGroup>
-                  </Col>
-                </Row>
-              </div>
-            ))}
+                            <>
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleEdit(key())}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleDelete(key())}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          </Show>
+                        </InputGroup>
+                      </Col>
+                    </Row>
+                  </div>
+                )
+                // ))}
+              }
+            </Index>
             <div>
               <input
                 type="text"
@@ -496,8 +514,7 @@ const App: Component = () => {
             </Button>
           </InputGroup>
         </>
-
-        {newEvent() !== null && (
+        <Show when={newEvent() !== null} fallback={<></>}>
           <div ref={(ref) => (scrollRef = ref)}>
             <hr />
             <h3 class="fs-3">Event</h3>
@@ -519,8 +536,7 @@ const App: Component = () => {
               </Button>
             </Form>
           </div>
-        )}
-
+        </Show>
         {/* footer */}
 
         <div class={"" + styles.footer}>
@@ -573,7 +589,7 @@ const App: Component = () => {
           <Toast.Body>{message()}</Toast.Body>
         </Toast>
       </ToastContainer>
-      {processing() && (
+      <Show when={processing()} fallback={<></>}>
         <Spinner
           animation="border"
           role="status"
@@ -582,7 +598,7 @@ const App: Component = () => {
         >
           <span class="visually-hidden">Loading...</span>
         </Spinner>
-      )}
+      </Show>
     </>
   );
 };
