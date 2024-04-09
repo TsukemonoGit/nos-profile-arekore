@@ -54,3 +54,28 @@
 .title {
   margin-bottom: 0;
 }
+
+.footer {
+  margin-top: 4rem;
+  background-color: #eeeeee;
+  padding: 8px;
+  border-radius: 8px;
+}
+.footer a {
+  text-decoration: none;
+  margin: 4px;
+  padding: 4px 6px;
+  background-color: lightGray;
+  border-radius: 100%;
+  color: #000000;
+}
+.footer a:hover {
+  background-color: #aaaaaa;
+}
+.spinner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+
+  z-index: 9999;
+}

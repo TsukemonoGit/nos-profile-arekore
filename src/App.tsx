@@ -2,8 +2,10 @@ import {
   createSignal,
   type Component,
   createEffect,
+
   Show,
   For,
+
 } from "solid-js";
 
 import styles from "./App.module.css";
@@ -45,21 +47,10 @@ const App: Component = () => {
     null
   );
   const [newEvent, setNewEvent] = createSignal<NostrEvent | null>(null);
+
   // 処理中状態の管理
   const [processing, setProcessing] = createSignal(false);
   let relay: Relay;
-
-  setEvent({
-    content:
-      '{"picture":"https://i.nostr.build/zxG0.png","banner":"https://image.nostr.build/5a7827dcd2524b81b0d20851cb63899694981a794d60c4716add12ae0ea7f9ad.gif","name":"mono","display_name":"mönö₍ 掃x除 ₎もの","about":"アイコンはあわゆきさん作\\n(ひとりごと)\\n2023/02/04(土)17時位 に はじめました \\n\\nnew!【いろんなリスト見るやつ】\\nhttps://nostviewstr.vercel.app/\\n\\n【ぶくまびうあ】\\nhttps://nostr-bookmark-viewer3.vercel.app/\\n【ノートを単品で複製したいときのやつ】\\nhttps://dupstr.vercel.app/\\n\\n【もの画像】\\nhttps://tsukemonogit.github.io/nostr-monoGazo-bot/\\n\\n【初めてクエストを達成した者】https://nostx.shino3.net/note18kn29rrwehlp9dgpqlrem3ysk5tt6ucl2h2tj4e4uh53facc6g2qxwa77h","nip05":"mono@tsukemonogit.github.io","lud16":"thatthumb37@walletofsatoshi.com","displayName":"","nip05valid":true}',
-    created_at: 1710262316,
-    id: "e000a0059b4ba1ad1f0010b86df51f676037afd957a5185ca410428d26bc6848",
-    kind: 0,
-    pubkey: "84b0c46ab699ac35eb2ca286470b85e081db2087cdef63932236c397417782f5",
-    sig: "ab61e66c7e2c33268d051a64549cb3879e3f7c71e4012b4180e8e374afa3dc23116a65e06401bcb350c4c45b0326006cc83433ff51fdaf18676b8177d1337a95",
-    tags: [],
-  });
-  setContent(JSON.parse((event() as NostrEvent).content));
 
   interface Metadata {
     [key: string]: any;
@@ -86,6 +77,7 @@ const App: Component = () => {
     lud16: "nameswallet@wallet.com",
   };
   let pubhex: string;
+  let scrollRef: HTMLDivElement;
   const dataReset = () => {
     setSeckey("");
     setShow(false);
@@ -95,6 +87,8 @@ const App: Component = () => {
     setNewKey("");
     setNewValue("");
     setEditingKey(null);
+    setEditedContent(null);
+    setNewEvent(null);
   };
   const connectRelay = async () => {
     dataReset();
@@ -159,6 +153,7 @@ const App: Component = () => {
       setContent(updatedContent);
       setNewKey("");
       setNewValue("");
+      console.log("Content added:", content());
     }
     setProcessing(false);
   };
@@ -174,22 +169,57 @@ const App: Component = () => {
   const handleEdit = (key: string | boolean) => {
     setEditingKey(key);
   };
-
-  const handleSave = () => {
+  const handleCancelEdit = () => {
     setEditingKey(null);
+    setEditedContent(null);
   };
 
-  const handleGetPub = async () => {
-    const { waitNostr } = await import("nip07-awaiter");
-    const nostr = await waitNostr(1000);
-    if (nostr === undefined) {
-      alert("Install NIP-07 browser extension");
+  const handleSave = (key: string) => {
+    console.log(key);
+    if (
+      key in sampleData &&
+      editedContent() !== null &&
+      typeof (editedContent() as Metadata)[key] !== typeof sampleData[key]
+    ) {
+      setMessage(`無効なデータです: ${key}のタイプは${typeof sampleData[key]}`);
+      setShow(true);
       return;
     }
     setProcessing(true);
-    const pub = await nostr.getPublicKey();
-    if (pub) {
-      setPubkey(nip19.npubEncode(pub));
+    const updatedContent = {
+      ...content(),
+      [key]:
+        editedContent() !== null
+          ? (editedContent() as Metadata)[key]
+          : content()[key],
+    };
+    setContent(updatedContent);
+    setEditingKey(null);
+    setProcessing(false);
+  };
+
+  const handleGetPub = async () => {
+    setProcessing(true);
+    const { waitNostr } = await import("nip07-awaiter");
+    const nostr = await waitNostr(1000);
+    if (nostr === undefined) {
+      setMessage("Install NIP-07 browser extension");
+      setShow(true);
+      return;
+    }
+
+    try {
+      const pub = await nostr.getPublicKey();
+      if (pub) {
+        setPubkey(nip19.npubEncode(pub));
+      }
+      setProcessing(false);
+    } catch (error) {
+      console.log(error);
+      setMessage("pubkeyの取得に失敗しました");
+      setShow(true);
+      setProcessing(false);
+
     }
     setProcessing(false);
   };
@@ -221,7 +251,7 @@ const App: Component = () => {
         }
       }
     }
-
+    setProcessing(true);
     //console.log(JSON.stringify(content()));
     const { waitNostr } = await import("nip07-awaiter");
     const nostr = dore === "nsec" ? undefined : await waitNostr(1000);
@@ -231,42 +261,51 @@ const App: Component = () => {
 
       return;
     }
-    setProcessing(true);
-    let newEvent: NostrEvent = {
-      content: JSON.stringify(content()),
-      kind: event()?.kind ?? 0,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: event()?.tags ?? [],
-      pubkey:
-        dore === "nsec"
-          ? getPublicKey(getHexSeckey(seckey()))
-          : (await nostr?.getPublicKey()) ?? "",
-      sig: "",
-      id: "",
-    };
-    pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
-    console.log(pubhex);
-    //イベントチェック
-    if (pubhex !== "" && newEvent.pubkey !== pubhex) {
-      setMessage("check your pubkey");
-      setShow(true);
-      setProcessing(false);
-      return;
-    }
-    const check = validateEvent(newEvent);
-    if (!check) {
-      setMessage("不正なイベントです");
-      setProcessing(false);
-      return;
-    }
 
-    //
-    newEvent.id = getEventHash(newEvent);
-    newEvent =
-      dore === "nsec"
-        ? finalizeEvent(newEvent, getHexSeckey(seckey()))
-        : ((await nostr?.signEvent(newEvent)) as NostrEvent);
-    setNewEvent(newEvent);
+    try {
+      let newEvent: NostrEvent = {
+        content: JSON.stringify(content()),
+        kind: event()?.kind ?? 0,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: event()?.tags ?? [],
+        pubkey:
+          dore === "nsec"
+            ? getPublicKey(getHexSeckey(seckey()))
+            : (await nostr?.getPublicKey()) ?? "",
+        sig: "",
+        id: "",
+      };
+      pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
+      console.log(pubhex);
+      //イベントチェック
+      if (pubhex !== "" && newEvent.pubkey !== pubhex) {
+        setMessage("check your pubkey");
+        setShow(true);
+        setProcessing(false);
+        return;
+      }
+      const check = validateEvent(newEvent);
+      if (!check) {
+        setMessage("不正なイベントです");
+        setProcessing(false);
+        return;
+      }
+
+      //
+      newEvent.id = getEventHash(newEvent);
+      newEvent =
+        dore === "nsec"
+          ? finalizeEvent(newEvent, getHexSeckey(seckey()))
+          : ((await nostr?.signEvent(newEvent)) as NostrEvent);
+      setNewEvent(newEvent);
+      if (scrollRef) {
+        scrollRef.scrollIntoView({ behavior: "smooth" });
+      }
+    } catch (error) {
+      setMessage("error");
+      setProcessing(false);
+      return;
+}
     setProcessing(false);
   };
 
@@ -296,7 +335,9 @@ const App: Component = () => {
 
   return (
     <>
+
       <Container fluid="md" class="my-5">
+
         <>
           <div class={styles.profileHeader}>
             <h3 class="fs-3">profileを修正 / 作成する</h3>{" "}
@@ -305,6 +346,7 @@ const App: Component = () => {
               target="_blank"
               rel="noopener noreferrer"
               class={styles.githubCol}
+
             >
               Github
             </a>
@@ -439,45 +481,33 @@ const App: Component = () => {
                   placeholder="New Key"
                 />
                 <input
-                  type="text"
-                  value={newValue().toString()}
-                  onInput={(e) => {
-                    // 新しい値が文字列かブール値のいずれかであることを確認
-                    const value = e.target.value;
-                    setNewValue(
-                      value === "true"
-                        ? true
-                        : value === "false"
-                        ? false
-                        : value
-                    );
-                  }}
-                  placeholder="New Value"
-                />
-                <Button variant="outline-primary" onClick={handleAdd}>
-                  Add
-                </Button>
-              </div>
-            </Form>
-            <hr />
-            <h3 class="fs-3">newEvent作成</h3>
-            <Button variant="warning" onClick={() => handleCreateEvent()}>
-              NIP-07,46で署名
-            </Button>
 
-            <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
-            <hr />
-            <InputGroup class={"mb-3 " + styles.lowOpacity}>
-              <FormControl
-                type="text"
-                placeholder="nsec..."
-                value={seckey()}
-                onInput={(e) => setSeckey(e.currentTarget.value)}
-              />
-              <Button
-                variant="outline-secondary"
-                onClick={() => handleCreateEvent("nsec")}
+  
+                  type="text"
+                  placeholder="wss://"
+                  value={relayURL()}
+                  onInput={(e) => setRelayURL(e.currentTarget.value)}
+                />
+              </Form.Group>
+              <Button variant="warning" onClick={() => handlePublieshEvent()}>
+                投稿
+              </Button>
+            </Form>
+          </div>
+        </Show>
+        {/* footer */}
+
+        <div class={"" + styles.footer}>
+          <Row>
+            <Col>
+              関連NIP -
+              <a
+                href="https://github.com/nostr-protocol/nips/blob/master/01.md#kinds"
+                target="_blank"
+                rel="noopener noreferrer"
+                class={styles.githubCol}
               >
+
                 Nsecで署名
               </Button>
             </InputGroup>
@@ -517,6 +547,7 @@ const App: Component = () => {
                 rel="noopener noreferrer"
                 class={styles.githubCol}
               >
+
                 01
               </a>
               <a
@@ -547,7 +578,6 @@ const App: Component = () => {
           </Row>
         </div>
       </Container>
-
       <ToastContainer class="p-3 position-fixed" position={"bottom-center"}>
         <Toast
           onClose={() => setShow(false)}
