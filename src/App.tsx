@@ -27,6 +27,7 @@ import {
   InputGroup,
   FormControl,
   Accordion,
+  Spinner,
 } from "solid-bootstrap";
 import { getHexPubkey, getHexSeckey } from "./function";
 
@@ -506,6 +507,45 @@ const App: Component = () => {
             </Form>
           </>
         </Show>
+        <div class={"" + styles.footer}>
+          <Row>
+            <Col>
+              関連NIP -
+              <a
+                href="https://github.com/nostr-protocol/nips/blob/master/01.md#kinds"
+                target="_blank"
+                rel="noopener noreferrer"
+                class={styles.githubCol}
+              >
+                01
+              </a>
+              <a
+                href="https://github.com/nostr-protocol/nips/blob/master/05.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                class={styles.githubCol}
+              >
+                05
+              </a>
+              <a
+                href="https://github.com/nostr-protocol/nips/blob/master/24.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                class={styles.githubCol}
+              >
+                24
+              </a>
+              <a
+                href="https://github.com/nostr-protocol/nips/blob/master/39.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                class={styles.githubCol}
+              >
+                39
+              </a>
+            </Col>
+          </Row>
+        </div>
       </Container>
 
       <ToastContainer class="p-3 position-fixed" position={"bottom-center"}>
@@ -518,6 +558,16 @@ const App: Component = () => {
           <Toast.Body>{message()}</Toast.Body>
         </Toast>
       </ToastContainer>
+      <Show when={processing()} fallback={<></>}>
+        <Spinner
+          animation="border"
+          role="status"
+          variant="primary"
+          class={styles.spinner}
+        >
+          <span class="visually-hidden">Loading...</span>
+        </Spinner>
+      </Show>
     </>
   );
 };
