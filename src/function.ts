@@ -1,5 +1,5 @@
-import { nip19 } from "nostr-tools";
-import { bytesToHex, concatBytes, hexToBytes } from "@noble/hashes/utils";
+import { getPublicKey, nip19 } from "nostr-tools";
+
 export function getHexPubkey(str: string): string {
   try {
     if (str.startsWith("nostr:")) {
@@ -7,6 +7,9 @@ export function getHexPubkey(str: string): string {
     }
     if (str.startsWith("npub")) {
       str = nip19.decode(str).data as string;
+    } else if (str.startsWith("nsec")) {
+      const sec = nip19.decode(str).data as Uint8Array;
+      str = getPublicKey(sec);
     }
     nip19.npubEncode(str);
   } catch (error) {

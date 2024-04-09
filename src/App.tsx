@@ -49,17 +49,17 @@ const App: Component = () => {
   const [processing, setProcessing] = createSignal(false);
   let relay: Relay;
 
-  setEvent({
-    content:
-      '{"picture":"https://i.nostr.build/zxG0.png","banner":"https://image.nostr.build/5a7827dcd2524b81b0d20851cb63899694981a794d60c4716add12ae0ea7f9ad.gif","name":"mono","display_name":"mönö₍ 掃x除 ₎もの","about":"アイコンはあわゆきさん作\\n(ひとりごと)\\n2023/02/04(土)17時位 に はじめました \\n\\nnew!【いろんなリスト見るやつ】\\nhttps://nostviewstr.vercel.app/\\n\\n【ぶくまびうあ】\\nhttps://nostr-bookmark-viewer3.vercel.app/\\n【ノートを単品で複製したいときのやつ】\\nhttps://dupstr.vercel.app/\\n\\n【もの画像】\\nhttps://tsukemonogit.github.io/nostr-monoGazo-bot/\\n\\n【初めてクエストを達成した者】https://nostx.shino3.net/note18kn29rrwehlp9dgpqlrem3ysk5tt6ucl2h2tj4e4uh53facc6g2qxwa77h","nip05":"mono@tsukemonogit.github.io","lud16":"thatthumb37@walletofsatoshi.com","displayName":"","nip05valid":true}',
-    created_at: 1710262316,
-    id: "e000a0059b4ba1ad1f0010b86df51f676037afd957a5185ca410428d26bc6848",
-    kind: 0,
-    pubkey: "84b0c46ab699ac35eb2ca286470b85e081db2087cdef63932236c397417782f5",
-    sig: "ab61e66c7e2c33268d051a64549cb3879e3f7c71e4012b4180e8e374afa3dc23116a65e06401bcb350c4c45b0326006cc83433ff51fdaf18676b8177d1337a95",
-    tags: [],
-  });
-  setContent(JSON.parse((event() as NostrEvent).content));
+  // setEvent({
+  //   content:
+  //     '{"picture":"https://i.nostr.build/zxG0.png","banner":"https://image.nostr.build/5a7827dcd2524b81b0d20851cb63899694981a794d60c4716add12ae0ea7f9ad.gif","name":"mono","display_name":"mönö₍ 掃x除 ₎もの","about":"アイコンはあわゆきさん作\\n(ひとりごと)\\n2023/02/04(土)17時位 に はじめました \\n\\nnew!【いろんなリスト見るやつ】\\nhttps://nostviewstr.vercel.app/\\n\\n【ぶくまびうあ】\\nhttps://nostr-bookmark-viewer3.vercel.app/\\n【ノートを単品で複製したいときのやつ】\\nhttps://dupstr.vercel.app/\\n\\n【もの画像】\\nhttps://tsukemonogit.github.io/nostr-monoGazo-bot/\\n\\n【初めてクエストを達成した者】https://nostx.shino3.net/note18kn29rrwehlp9dgpqlrem3ysk5tt6ucl2h2tj4e4uh53facc6g2qxwa77h","nip05":"mono@tsukemonogit.github.io","lud16":"thatthumb37@walletofsatoshi.com","displayName":"","nip05valid":true}',
+  //   created_at: 1710262316,
+  //   id: "e000a0059b4ba1ad1f0010b86df51f676037afd957a5185ca410428d26bc6848",
+  //   kind: 0,
+  //   pubkey: "84b0c46ab699ac35eb2ca286470b85e081db2087cdef63932236c397417782f5",
+  //   sig: "ab61e66c7e2c33268d051a64549cb3879e3f7c71e4012b4180e8e374afa3dc23116a65e06401bcb350c4c45b0326006cc83433ff51fdaf18676b8177d1337a95",
+  //   tags: [],
+  // });
+  // setContent(JSON.parse((event() as NostrEvent).content));
 
   interface Metadata {
     [key: string]: any;
@@ -377,125 +377,116 @@ const App: Component = () => {
             </Accordion.Item>
           </Accordion>
         </>
-        <Show when={Object.keys(content()).length > 0}>
-          <>
-            <Form>
-              <For each={Object.keys({ ...sampleData, ...content() })}>
-                {(key) => (
-                  <div class={styles.content}>
-                    <Row>
-                      <Form.Label column lg={2}>
-                        {key}
-                      </Form.Label>
-                      <Col>
-                        <InputGroup>
-                          <FormControl
-                            as="textarea"
-                            placeholder={
-                              sampleData.hasOwnProperty(key)
-                                ? sampleData[key]
-                                : key
-                            }
-                            type="text"
-                            value={content()[key]}
-                            readOnly={editingKey() !== key}
-                            onChange={(e) => {
-                              const updatedContent = {
-                                ...content(),
-                                [key]:
-                                  e.target.value === "true"
-                                    ? true
-                                    : e.target.value === "false"
-                                    ? false
-                                    : e.target.value,
-                              };
-                              setContent(updatedContent);
-                            }}
-                          />
-                          <Show
-                            when={editingKey() !== key}
-                            fallback={
-                              <Button
-                                variant="outline-primary"
-                                onClick={() => handleSave()}
-                              >
-                                Save
-                              </Button>
-                            }
-                          >
-                            <>
-                              <Button
-                                variant="outline-primary"
-                                onClick={() => handleEdit(key)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="outline-primary"
-                                onClick={() => handleDelete(key)}
-                              >
-                                Delete
-                              </Button>
-                            </>
-                          </Show>
-                        </InputGroup>
-                      </Col>
-                    </Row>
-                  </div>
-                )}
-              </For>
-              <div>
-                <input
-                  type="text"
-                  value={newKey()}
-                  onInput={(e) => setNewKey(e.target.value)}
-                  placeholder="New Key"
-                />
-                <input
-                  type="text"
-                  value={newValue().toString()}
-                  onInput={(e) => {
-                    // 新しい値が文字列かブール値のいずれかであることを確認
-                    const value = e.target.value;
-                    setNewValue(
-                      value === "true"
-                        ? true
-                        : value === "false"
-                        ? false
-                        : value
-                    );
-                  }}
-                  placeholder="New Value"
-                />
-                <Button variant="outline-primary" onClick={handleAdd}>
-                  Add
-                </Button>
-              </div>
-            </Form>
-            <hr />
-            <h3 class="fs-3">newEvent作成</h3>
-            <Button variant="warning" onClick={() => handleCreateEvent()}>
-              NIP-07,46で署名
-            </Button>
 
-            <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
-            <hr />
-            <InputGroup class={"mb-3 " + styles.lowOpacity}>
-              <FormControl
-                type="text"
-                placeholder="nsec..."
-                value={seckey()}
-                onInput={(e) => setSeckey(e.currentTarget.value)}
-              />
-              <Button
-                variant="outline-secondary"
-                onClick={() => handleCreateEvent("nsec")}
-              >
-                Nsecで署名
-              </Button>
-            </InputGroup>
-          </>
-        </Show>
+        <Form>
+          <For each={Object.keys({ ...sampleData, ...content() })}>
+            {(key) => (
+              <div class={styles.content}>
+                <Row>
+                  <Form.Label column lg={2}>
+                    {key}
+                  </Form.Label>
+                  <Col>
+                    <InputGroup>
+                      <FormControl
+                        as="textarea"
+                        placeholder={
+                          sampleData.hasOwnProperty(key) ? sampleData[key] : key
+                        }
+                        type="text"
+                        value={content()[key]}
+                        readOnly={editingKey() !== key}
+                        onChange={(e) => {
+                          const updatedContent = {
+                            ...content(),
+                            [key]:
+                              e.target.value === "true"
+                                ? true
+                                : e.target.value === "false"
+                                ? false
+                                : e.target.value,
+                          };
+                          setContent(updatedContent);
+                        }}
+                      />
+                      <Show
+                        when={editingKey() !== key}
+                        fallback={
+                          <Button
+                            variant="outline-primary"
+                            onClick={() => handleSave()}
+                          >
+                            Save
+                          </Button>
+                        }
+                      >
+                        <>
+                          <Button
+                            variant="outline-primary"
+                            onClick={() => handleEdit(key)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline-primary"
+                            onClick={() => handleDelete(key)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      </Show>
+                    </InputGroup>
+                  </Col>
+                </Row>
+              </div>
+            )}
+          </For>
+          <div>
+            <input
+              type="text"
+              value={newKey()}
+              onInput={(e) => setNewKey(e.target.value)}
+              placeholder="New Key"
+            />
+            <input
+              type="text"
+              value={newValue().toString()}
+              onInput={(e) => {
+                // 新しい値が文字列かブール値のいずれかであることを確認
+                const value = e.target.value;
+                setNewValue(
+                  value === "true" ? true : value === "false" ? false : value
+                );
+              }}
+              placeholder="New Value"
+            />
+            <Button variant="outline-primary" onClick={handleAdd}>
+              Add
+            </Button>
+          </div>
+        </Form>
+        <hr />
+        <h3 class="fs-3">newEvent作成</h3>
+        <Button variant="warning" onClick={() => handleCreateEvent()}>
+          NIP-07,46で署名
+        </Button>
+
+        <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
+        <hr />
+        <InputGroup class={"mb-3 " + styles.lowOpacity}>
+          <FormControl
+            type="text"
+            placeholder="nsec..."
+            value={seckey()}
+            onInput={(e) => setSeckey(e.currentTarget.value)}
+          />
+          <Button
+            variant="outline-secondary"
+            onClick={() => handleCreateEvent("nsec")}
+          >
+            Nsecで署名
+          </Button>
+        </InputGroup>
 
         <Show when={newEvent() !== null}>
           <>
