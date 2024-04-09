@@ -186,10 +186,18 @@ const App: Component = () => {
       alert("Install NIP-07 browser extension");
       return;
     }
-    setProcessing(true);
-    const pub = await nostr.getPublicKey();
-    if (pub) {
-      setPubkey(nip19.npubEncode(pub));
+
+    try {
+      const pub = await nostr.getPublicKey();
+      if (pub) {
+        setPubkey(nip19.npubEncode(pub));
+      }
+      setProcessing(false);
+    } catch (error) {
+      console.log(error);
+      setMessage("pubkeyの取得に失敗しました");
+      setShow(true);
+      setProcessing(false);
     }
     setProcessing(false);
   };
@@ -231,42 +239,47 @@ const App: Component = () => {
 
       return;
     }
-    setProcessing(true);
-    let newEvent: NostrEvent = {
-      content: JSON.stringify(content()),
-      kind: event()?.kind ?? 0,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: event()?.tags ?? [],
-      pubkey:
-        dore === "nsec"
-          ? getPublicKey(getHexSeckey(seckey()))
-          : (await nostr?.getPublicKey()) ?? "",
-      sig: "",
-      id: "",
-    };
-    pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
-    console.log(pubhex);
-    //イベントチェック
-    if (pubhex !== "" && newEvent.pubkey !== pubhex) {
-      setMessage("check your pubkey");
-      setShow(true);
-      setProcessing(false);
-      return;
-    }
-    const check = validateEvent(newEvent);
-    if (!check) {
-      setMessage("不正なイベントです");
-      setProcessing(false);
-      return;
-    }
+    try {
+      let newEvent: NostrEvent = {
+        content: JSON.stringify(content()),
+        kind: event()?.kind ?? 0,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: event()?.tags ?? [],
+        pubkey:
+          dore === "nsec"
+            ? getPublicKey(getHexSeckey(seckey()))
+            : (await nostr?.getPublicKey()) ?? "",
+        sig: "",
+        id: "",
+      };
+      pubhex = !pubhex ? getHexPubkey(pubkey()) : pubhex;
+      console.log(pubhex);
+      //イベントチェック
+      if (pubhex !== "" && newEvent.pubkey !== pubhex) {
+        setMessage("check your pubkey");
+        setShow(true);
+        setProcessing(false);
+        return;
+      }
+      const check = validateEvent(newEvent);
+      if (!check) {
+        setMessage("不正なイベントです");
+        setProcessing(false);
+        return;
+      }
 
-    //
-    newEvent.id = getEventHash(newEvent);
-    newEvent =
-      dore === "nsec"
-        ? finalizeEvent(newEvent, getHexSeckey(seckey()))
-        : ((await nostr?.signEvent(newEvent)) as NostrEvent);
-    setNewEvent(newEvent);
+      //
+      newEvent.id = getEventHash(newEvent);
+      newEvent =
+        dore === "nsec"
+          ? finalizeEvent(newEvent, getHexSeckey(seckey()))
+          : ((await nostr?.signEvent(newEvent)) as NostrEvent);
+      setNewEvent(newEvent);
+    } catch (error) {
+      setMessage("error");
+      setProcessing(false);
+      return;
+    }
     setProcessing(false);
   };
 
