@@ -2,10 +2,10 @@ import {
   createSignal,
   type Component,
   createEffect,
-  Index,
-  Switch,
-  Match,
+
   Show,
+  For,
+
 } from "solid-js";
 
 import styles from "./App.module.css";
@@ -47,7 +47,7 @@ const App: Component = () => {
     null
   );
   const [newEvent, setNewEvent] = createSignal<NostrEvent | null>(null);
-  const [editedContent, setEditedContent] = createSignal<Metadata | null>(null);
+
   // 処理中状態の管理
   const [processing, setProcessing] = createSignal(false);
   let relay: Relay;
@@ -207,6 +207,7 @@ const App: Component = () => {
       setShow(true);
       return;
     }
+
     try {
       const pub = await nostr.getPublicKey();
       if (pub) {
@@ -218,7 +219,9 @@ const App: Component = () => {
       setMessage("pubkeyの取得に失敗しました");
       setShow(true);
       setProcessing(false);
+
     }
+    setProcessing(false);
   };
 
   //dore="nsec"だとnsecによるかきこみ,nullだと拡張機能で
@@ -243,6 +246,7 @@ const App: Component = () => {
         if (key in sampleData && typeof value !== typeof sampleData[key]) {
           setMessage(`不正なデータが含まれています: ${key}`);
           setShow(true);
+
           return;
         }
       }
@@ -257,6 +261,7 @@ const App: Component = () => {
 
       return;
     }
+
     try {
       let newEvent: NostrEvent = {
         content: JSON.stringify(content()),
@@ -300,7 +305,7 @@ const App: Component = () => {
       setMessage("error");
       setProcessing(false);
       return;
-    }
+}
     setProcessing(false);
   };
 
@@ -330,7 +335,9 @@ const App: Component = () => {
 
   return (
     <>
-      <Container fluid="md" class="mt-5">
+
+      <Container fluid="md" class="my-5">
+
         <>
           <div class={styles.profileHeader}>
             <h3 class="fs-3">profileを修正 / 作成する</h3>{" "}
@@ -339,6 +346,7 @@ const App: Component = () => {
               target="_blank"
               rel="noopener noreferrer"
               class={styles.githubCol}
+
             >
               Github
             </a>
@@ -386,6 +394,7 @@ const App: Component = () => {
                     取得
                   </Button>
                 </Form>
+
                 <Show when={event() !== null}>
                   <>
                     <hr />
@@ -396,73 +405,63 @@ const App: Component = () => {
               </Accordion.Body>
             </Accordion.Item>
           </Accordion>
-          <Form>
-            <Index each={Object.keys({ ...sampleData, ...content() })}>
-              {
-                (key, i) => (
-                  // {Object.keys({ ...sampleData, ...content() }).map((key) => (
+        </>
+        <Show when={Object.keys(content()).length > 0}>
+          <>
+            <Form>
+              <For each={Object.keys({ ...sampleData, ...content() })}>
+                {(key) => (
                   <div class={styles.content}>
                     <Row>
                       <Form.Label column lg={2}>
-                        {key()}
+                        {key}
                       </Form.Label>
                       <Col>
                         <InputGroup>
                           <FormControl
                             as="textarea"
                             placeholder={
-                              key() in sampleData ? sampleData[key()] : key()
+                              sampleData.hasOwnProperty(key)
+                                ? sampleData[key]
+                                : key
                             }
                             type="text"
-                            value={
-                              (editingKey() === key()
-                                ? editedContent()?.[key()]
-                                : content()[key()]) || ""
-                            }
-                            readOnly={editingKey() !== key()}
+                            value={content()[key]}
+                            readOnly={editingKey() !== key}
                             onChange={(e) => {
                               const updatedContent = {
-                                ...editedContent(),
-                                [key()]:
+                                ...content(),
+                                [key]:
                                   e.target.value === "true"
                                     ? true
                                     : e.target.value === "false"
                                     ? false
                                     : e.target.value,
                               };
-                              setEditedContent(updatedContent);
+                              setContent(updatedContent);
                             }}
                           />
-
                           <Show
-                            when={editingKey() !== key()}
+                            when={editingKey() !== key}
                             fallback={
-                              <>
-                                <Button
-                                  variant="outline-primary"
-                                  onClick={() => handleSave(key())}
-                                >
-                                  Save
-                                </Button>
-                                <Button
-                                  variant="outline-secondary"
-                                  onClick={handleCancelEdit}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleSave()}
+                              >
+                                Save
+                              </Button>
                             }
                           >
                             <>
                               <Button
                                 variant="outline-primary"
-                                onClick={() => handleEdit(key())}
+                                onClick={() => handleEdit(key)}
                               >
                                 Edit
                               </Button>
                               <Button
                                 variant="outline-primary"
-                                onClick={() => handleDelete(key())}
+                                onClick={() => handleDelete(key)}
                               >
                                 Delete
                               </Button>
@@ -472,67 +471,18 @@ const App: Component = () => {
                       </Col>
                     </Row>
                   </div>
-                )
-                // ))}
-              }
-            </Index>
-            <div>
-              <input
-                type="text"
-                value={newKey()}
-                onInput={(e) => setNewKey(e.target.value)}
-                placeholder="New Key"
-              />
-              <input
-                type="text"
-                value={newValue().toString()}
-                onInput={(e) => {
-                  // 新しい値が文字列かブール値のいずれかであることを確認
-                  const value = e.target.value;
-                  setNewValue(
-                    value === "true" ? true : value === "false" ? false : value
-                  );
-                }}
-                placeholder="New Value"
-              />
-              <Button variant="outline-primary" onClick={handleAdd}>
-                Add
-              </Button>
-            </div>
-          </Form>
-          <hr />
-          <h3 class="fs-3">newEvent作成</h3>
-          <Button variant="warning" onClick={() => handleCreateEvent()}>
-            NIP-07,46で署名
-          </Button>
-          <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
-          <hr />
-          <InputGroup class={"mb-3 " + styles.lowOpacity}>
-            <FormControl
-              type="text"
-              placeholder="nsec..."
-              value={seckey()}
-              onInput={(e) => setSeckey(e.currentTarget.value)}
-            />
-            <Button
-              variant="outline-secondary"
-              onClick={() => handleCreateEvent("nsec")}
-            >
-              Nsecで署名
-            </Button>
-          </InputGroup>
-        </>
-        <Show when={newEvent() !== null} fallback={<></>}>
-          <div ref={(ref) => (scrollRef = ref)}>
-            <hr />
-            <h3 class="fs-3">Event</h3>
-            <pre>{JSON.stringify(newEvent(), null, 2)}</pre>
-            <hr />
-            <h3 class="fs-3">Relayに投稿</h3>
-            <Form>
-              <Form.Group class="mb-3" controlId="relayURL">
-                <Form.Label>relayURL</Form.Label>
-                <Form.Control
+                )}
+              </For>
+              <div>
+                <input
+                  type="text"
+                  value={newKey()}
+                  onInput={(e) => setNewKey(e.target.value)}
+                  placeholder="New Key"
+                />
+                <input
+
+  
                   type="text"
                   placeholder="wss://"
                   value={relayURL()}
@@ -557,6 +507,47 @@ const App: Component = () => {
                 rel="noopener noreferrer"
                 class={styles.githubCol}
               >
+
+                Nsecで署名
+              </Button>
+            </InputGroup>
+          </>
+        </Show>
+
+        <Show when={newEvent() !== null}>
+          <>
+            <hr />
+            <h3 class="fs-3">Event</h3>
+            <pre>{JSON.stringify(newEvent(), null, 2)}</pre>
+            <hr />
+            <h3 class="fs-3">Relayに投稿</h3>
+            <Form>
+              <Form.Group class="mb-3" controlId="relayURL">
+                <Form.Label>relayURL</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="wss://"
+                  value={relayURL()}
+                  onInput={(e) => setRelayURL(e.currentTarget.value)}
+                />
+              </Form.Group>
+              <Button variant="warning" onClick={() => handlePublieshEvent()}>
+                投稿
+              </Button>
+            </Form>
+          </>
+        </Show>
+        <div class={"" + styles.footer}>
+          <Row>
+            <Col>
+              関連NIP -
+              <a
+                href="https://github.com/nostr-protocol/nips/blob/master/01.md#kinds"
+                target="_blank"
+                rel="noopener noreferrer"
+                class={styles.githubCol}
+              >
+
                 01
               </a>
               <a
