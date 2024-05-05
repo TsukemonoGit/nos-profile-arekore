@@ -95,9 +95,11 @@ const App: Component = () => {
     setNewKey("");
     setNewValue("");
     setEditingKey(null);
+    setNewEvent(null);
   };
   const connectRelay = async () => {
     dataReset();
+
     if (relayURL() == "" || pubkey() == "") {
       setMessage("check input pubkey or relayURL");
       setShow(true);
@@ -377,7 +379,6 @@ const App: Component = () => {
             </Accordion.Item>
           </Accordion>
         </>
-
         <Form>
           <For each={Object.keys({ ...sampleData, ...content() })}>
             {(key) => (
@@ -394,7 +395,7 @@ const App: Component = () => {
                           sampleData.hasOwnProperty(key) ? sampleData[key] : key
                         }
                         type="text"
-                        value={content()[key]}
+                        value={content()[key] ?? ""}
                         readOnly={editingKey() !== key}
                         onChange={(e) => {
                           const updatedContent = {
@@ -406,6 +407,7 @@ const App: Component = () => {
                                 ? false
                                 : e.target.value,
                           };
+
                           setContent(updatedContent);
                         }}
                       />
@@ -470,7 +472,6 @@ const App: Component = () => {
         <Button variant="warning" onClick={() => handleCreateEvent()}>
           NIP-07,46で署名
         </Button>
-
         <p class="text-muted small mx-1">(まだリレーには投稿されません)</p>
         <hr />
         <InputGroup class={"mb-3 " + styles.lowOpacity}>
@@ -487,7 +488,6 @@ const App: Component = () => {
             Nsecで署名
           </Button>
         </InputGroup>
-
         <Show when={newEvent() !== null}>
           <>
             <hr />
