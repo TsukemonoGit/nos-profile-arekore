@@ -206,6 +206,13 @@ const App: Component = () => {
 
   //dore="nsec"だとnsecによるかきこみ,nullだと拡張機能で
   const handleCreateEvent = async (dore: string = "nip07") => {
+    console.log("check", Object.entries(content()));
+    if (Object.entries(content()).length <= 0) {
+      setMessage("プロフィールが設定されていません");
+      setShow(true);
+      return;
+    }
+    setNewEvent(null); //すでに署名済みがある場合削除
     if (editingKey() !== null) {
       // 修正中の項目がある場合は注意文を表示して処理を中止
       setMessage(
@@ -217,7 +224,13 @@ const App: Component = () => {
 
     // contentの型チェックを行う
     const contentData: Metadata = content();
-
+    console.log(contentData);
+    if (!contentData) {
+      // 修正中の項目がある場合は注意文を表示して処理を中止
+      setMessage("content error");
+      setShow(true);
+      return;
+    }
     // 各プロパティに対して型チェックを行う
     for (const key in contentData) {
       if (Object.prototype.hasOwnProperty.call(contentData, key)) {
