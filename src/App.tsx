@@ -30,6 +30,9 @@ import {
   Spinner,
 } from "solid-bootstrap";
 import { getHexPubkey, getHexSeckey } from "./function";
+import "@konemono/nostr-share-component"
+
+
 
 const App: Component = () => {
   const [pubkey, setPubkey] = createSignal("");
@@ -336,6 +339,7 @@ const App: Component = () => {
             >
               Github
             </a>
+
           </div>
           <hr />
           <Accordion class="my-4">
@@ -417,8 +421,8 @@ const App: Component = () => {
                               e.target.value === "true"
                                 ? true
                                 : e.target.value === "false"
-                                ? false
-                                : e.target.value,
+                                  ? false
+                                  : e.target.value,
                           };
 
                           setContent(updatedContent);
@@ -563,6 +567,8 @@ const App: Component = () => {
             </Col>
           </Row>
         </div>
+        {/*@ts-ignore*/}
+        <nostr-share>share on nostr</nostr-share>
       </Container>
 
       <ToastContainer class="p-3 position-fixed" position={"bottom-center"}>
