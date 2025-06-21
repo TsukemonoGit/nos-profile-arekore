@@ -30,9 +30,7 @@ import {
   Spinner,
 } from "solid-bootstrap";
 import { getHexPubkey, getHexSeckey } from "./function";
-import "@konemono/nostr-share-component"
-
-
+import "@konemono/nostr-share-component";
 
 const App: Component = () => {
   const [pubkey, setPubkey] = createSignal("");
@@ -75,6 +73,7 @@ const App: Component = () => {
     banner?: string;
     bot?: boolean;
     lud16?: string;
+    birthday?: { year?: number; month?: number; day?: number };
   }
   //一般的なmetadataに含まれる項目
   const sampleData: Metadata = {
@@ -87,6 +86,7 @@ const App: Component = () => {
     banner: "https://example.com/banner.webp",
     bot: false,
     lud16: "nameswallet@wallet.com",
+    birthday: { year: 1990, month: 1, day: 1 },
   };
   let pubhex: string;
   const dataReset = () => {
@@ -325,6 +325,14 @@ const App: Component = () => {
     setProcessing(false);
   };
 
+  // 値を適切に文字列化する関数
+  const formatValueForDisplay = (value: any): string => {
+    if (typeof value === "object" && value !== null) {
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
   return (
     <>
       <Container fluid="md" class="my-5">
@@ -339,7 +347,6 @@ const App: Component = () => {
             >
               Github
             </a>
-
           </div>
           <hr />
           <Accordion class="my-4">
@@ -405,56 +412,194 @@ const App: Component = () => {
                     {key}
                   </Form.Label>
                   <Col>
-                    <InputGroup>
-                      <FormControl
-                        as="textarea"
-                        placeholder={
-                          sampleData.hasOwnProperty(key) ? sampleData[key] : key
-                        }
-                        type="text"
-                        value={content()[key] ?? ""}
-                        readOnly={editingKey() !== key}
-                        onChange={(e) => {
-                          const updatedContent = {
-                            ...content(),
-                            [key]:
-                              e.target.value === "true"
-                                ? true
-                                : e.target.value === "false"
-                                  ? false
-                                  : e.target.value,
-                          };
+                    <Show
+                      when={key === "birthday"}
+                      fallback={
+                        <InputGroup>
+                          <FormControl
+                            as="textarea"
+                            placeholder={
+                              sampleData.hasOwnProperty(key)
+                                ? sampleData[key]
+                                : key
+                            }
+                            type="text"
+                            value={formatValueForDisplay(content()[key] ?? "")}
+                            readOnly={editingKey() !== key}
+                            onChange={(e) => {
+                              let value: any = e.target.value;
 
-                          setContent(updatedContent);
-                        }}
-                      />
-                      <Show
-                        when={editingKey() !== key}
-                        fallback={
-                          <Button
-                            variant="outline-primary"
-                            onClick={() => handleSave()}
+                              // JSON文字列として解析を試行
+                              try {
+                                // JSONとして有効な文字列の場合は解析
+                                if (
+                                  value.startsWith("{") ||
+                                  value.startsWith("[") ||
+                                  value.startsWith('"')
+                                ) {
+                                  const parsed = JSON.parse(value);
+                                  value = parsed;
+                                } else if (value === "true") {
+                                  value = true;
+                                } else if (value === "false") {
+                                  value = false;
+                                }
+                              } catch {
+                                // JSON解析に失敗した場合は文字列として扱う
+                                if (value === "true") {
+                                  value = true;
+                                } else if (value === "false") {
+                                  value = false;
+                                }
+                              }
+
+                              const updatedContent = {
+                                ...content(),
+                                [key]: value,
+                              };
+
+                              setContent(updatedContent);
+                            }}
+                          />
+                          <Show
+                            when={editingKey() !== key}
+                            fallback={
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleSave()}
+                              >
+                                Save
+                              </Button>
+                            }
                           >
-                            Save
-                          </Button>
-                        }
-                      >
-                        <>
-                          <Button
-                            variant="outline-primary"
-                            onClick={() => handleEdit(key)}
+                            <>
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleEdit(key)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleDelete(key)}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          </Show>
+                        </InputGroup>
+                      }
+                    >
+                      {/* Birthday専用のフォーム */}
+                      <div class={styles.birthfirld}>
+                        <Row class="g-2">
+                          <Col xs={4}>
+                            <Form.Label>
+                              Year
+                              <Form.Control
+                                type="number"
+                                placeholder="1990"
+                                value={content().birthday?.year ?? ""}
+                                readOnly={editingKey() !== key}
+                                onChange={(e) => {
+                                  const year = e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined;
+                                  const updatedContent = {
+                                    ...content(),
+                                    birthday: {
+                                      ...content().birthday,
+                                      year: year,
+                                    },
+                                  };
+                                  setContent(updatedContent);
+                                }}
+                              />
+                            </Form.Label>
+                          </Col>
+                          <Col xs={4}>
+                            <Form.Label>
+                              Month
+                              <Form.Control
+                                type="number"
+                                placeholder="1"
+                                min="1"
+                                max="12"
+                                value={content().birthday?.month ?? ""}
+                                readOnly={editingKey() !== key}
+                                onChange={(e) => {
+                                  const month = e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined;
+                                  const updatedContent = {
+                                    ...content(),
+                                    birthday: {
+                                      ...content().birthday,
+                                      month: month,
+                                    },
+                                  };
+                                  setContent(updatedContent);
+                                }}
+                              />
+                            </Form.Label>
+                          </Col>
+                          <Col xs={4}>
+                            <Form.Label>
+                              Day
+                              <Form.Control
+                                type="number"
+                                placeholder="1"
+                                min="1"
+                                max="31"
+                                value={content().birthday?.day ?? ""}
+                                readOnly={editingKey() !== key}
+                                onChange={(e) => {
+                                  const day = e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined;
+                                  const updatedContent = {
+                                    ...content(),
+                                    birthday: {
+                                      ...content().birthday,
+                                      day: day,
+                                    },
+                                  };
+                                  setContent(updatedContent);
+                                }}
+                              />
+                            </Form.Label>
+                          </Col>
+                        </Row>
+                        <div class={styles.birthbutton}>
+                          <Show
+                            when={editingKey() !== key}
+                            fallback={
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleSave()}
+                              >
+                                Save
+                              </Button>
+                            }
                           >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline-primary"
-                            onClick={() => handleDelete(key)}
-                          >
-                            Delete
-                          </Button>
-                        </>
-                      </Show>
-                    </InputGroup>
+                            <>
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleEdit(key)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline-primary"
+                                onClick={() => handleDelete(key)}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          </Show>
+                        </div>
+                      </div>
+                    </Show>
                   </Col>
                 </Row>
               </div>
@@ -469,13 +614,35 @@ const App: Component = () => {
             />
             <input
               type="text"
-              value={newValue().toString()}
+              value={formatValueForDisplay(newValue())}
               onInput={(e) => {
-                // 新しい値が文字列かブール値のいずれかであることを確認
-                const value = e.target.value;
-                setNewValue(
-                  value === "true" ? true : value === "false" ? false : value
-                );
+                let value: any = e.target.value;
+
+                // JSON文字列として解析を試行
+                try {
+                  // JSONとして有効な文字列の場合は解析
+                  if (
+                    value.startsWith("{") ||
+                    value.startsWith("[") ||
+                    value.startsWith('"')
+                  ) {
+                    const parsed = JSON.parse(value);
+                    value = parsed;
+                  } else if (value === "true") {
+                    value = true;
+                  } else if (value === "false") {
+                    value = false;
+                  }
+                } catch {
+                  // JSON解析に失敗した場合は文字列として扱う
+                  if (value === "true") {
+                    value = true;
+                  } else if (value === "false") {
+                    value = false;
+                  }
+                }
+
+                setNewValue(value);
               }}
               placeholder="New Value"
             />

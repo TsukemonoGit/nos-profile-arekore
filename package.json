@@ -11,17 +11,17 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "solid-devtools": "^0.33.0",
-    "typescript": "^5.8.2",
-    "vite": "^6.3.2",
+    "solid-devtools": "^0.34.2",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.6"
   },
   "dependencies": {
-    "@konemono/nostr-share-component": "^0.4.0",
+    "@konemono/nostr-share-component": "^0.4.2",
     "nip07-awaiter": "^0.3.0",
-    "nostr-login": "^1.7.8",
-    "nostr-tools": "^2.10.4",
+    "nostr-login": "^1.7.11",
+    "nostr-tools": "^2.15.0",
     "solid-bootstrap": "^1.0.21",
-    "solid-js": "^1.9.5"
+    "solid-js": "^1.9.7"
   }
 }
