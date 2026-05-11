@@ -1,6 +1,6 @@
 /* @refresh reload */
 import { render } from "solid-js/web";
-import { init as initNostrLogin } from "nostr-login";
+import { init as initNostrLogin } from "@konemono/nostr-login";
 import "./index.css";
 import App from "./App";
 
